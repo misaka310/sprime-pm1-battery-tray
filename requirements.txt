@@ -1,0 +1,6 @@
+hidapi
+pystray
+Pillow
+pyinstaller
+pytest
+customtkinter
