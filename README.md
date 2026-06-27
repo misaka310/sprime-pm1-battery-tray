@@ -9,6 +9,12 @@ WindowsのタスクトレイにSPRIME PM1系ワイヤレスマウスのバッテ
 1. **巨大なトレイ数字アイコン**: 通知領域（タスクトレイ）のアイコン面積を最大限に活用し、バッテリー残量を太く大きな数字で直接描画します。
 2. **直感的な視認性**: 他のシステムアイコンと並んでも見劣りしないサイズ感と、状態に応じた背景色の変化により、一目で状況を把握できます。
 
+## ダウンロード
+
+通常利用者は、GitHub Releases から `SPRIME-PM1-Battery-Tray-*.zip` をダウンロードして展開し、`SPRIME-PM1-Battery-Tray.exe` を実行してください。
+
+開発者以外がローカルでビルドする必要はありません。
+
 ## 特徴
 - **視認性抜群のトレイアイコン**: 32x32ピクセル内に太字で数字を表示。無駄な余白を排除し、視覚的な占有面積を拡大しました。
 - **一目で分かる状態表示**:
@@ -26,8 +32,8 @@ WindowsのタスクトレイにSPRIME PM1系ワイヤレスマウスのバッテ
 
 ## 対応環境
 - Windows 10 / 11 (64bit)
-- Python 3.11以上（開発用）
 - SPRIME PM1 Wireless Mouse
+- Python 3.11以上（開発・ビルド用）
 
 ## 確認済み環境
 
@@ -48,17 +54,14 @@ WindowsのタスクトレイにSPRIME PM1系ワイヤレスマウスのバッテ
 - マウスがスリープ中、切断中、またはOS側でHIDデバイスを開けない場合は `--` や `!` 表示になります。
 - 他環境でうまく読めない場合は、まず `scripts\probe.ps1` と `scripts\e2e.ps1` でHID検出結果を確認してください。
 
-## セットアップ方法
-1. PowerShellを開き、プロジェクトのルートディレクトリに移動します。
-2. 次のコマンドを実行して依存関係をインストールします。
-   ```powershell
-   .\scripts\setup.ps1
-   ```
-
 ## 使い方
-### 実行
-```powershell
-.\scripts\run.ps1
+
+### 通常実行
+
+Releases からダウンロードしたZIPを展開し、次のEXEを起動します。
+
+```text
+SPRIME-PM1-Battery-Tray.exe
 ```
 
 ### 操作
@@ -66,13 +69,33 @@ WindowsのタスクトレイにSPRIME PM1系ワイヤレスマウスのバッテ
 - **手動更新**: 設定画面の「Refresh Now」またはトレイメニューの「Refresh now」。
 - **ログ確認**: 設定画面の「Open Logs」から、実行ログ用フォルダにアクセスできます。
 
-## 開発・ビルド
+## 開発者向け
+
+### セットアップ
+
+```powershell
+.\scripts\setup.ps1
+```
+
+### ソースから実行
+
+```powershell
+.\scripts\run.ps1
+```
+
 ### ビルド (EXE生成)
 単一のWindows用EXEフォルダ（コンソールなし）を生成します。
 ```powershell
 .\scripts\build.ps1
 ```
 生成物: `dist/SPRIME-PM1-Battery-Tray/SPRIME-PM1-Battery-Tray.exe`
+
+### GitHub Actionsでの配布ビルド
+
+`.github/workflows/build-windows.yml` により、`main` へのpush、手動実行、`v*` タグpushでWindows EXEを自動ビルドします。
+
+- `main` push / 手動実行: Actions artifact としてZIPを保存
+- `v*` タグpush: GitHub Releaseを作成し、ZIPを添付
 
 ### E2Eテスト
 ユニットテスト、実機HID読み取り、ビルド、EXE起動確認を一括で行います。
@@ -81,14 +104,15 @@ WindowsのタスクトレイにSPRIME PM1系ワイヤレスマウスのバッテ
 ```
 
 `e2e.ps1` は実機HID読み取りを含むため、SPRIME PM1を接続していない環境では失敗します。
+GitHub Actionsでは実機HIDを読めないため、ユニットテストとビルドのみ実行します。
 
 ## 公開前チェック
 
 公開前に最低限、次を確認してください。
 
-1. `python -m pytest tests/` が通る
-2. SPRIME PM1を接続した状態で `scripts\e2e.ps1` が通る
-3. `dist/SPRIME-PM1-Battery-Tray/SPRIME-PM1-Battery-Tray.exe` が起動する
+1. GitHub Actions の `Build Windows EXE` が通る
+2. SPRIME PM1を接続した状態でローカルの `scripts\e2e.ps1` が通る
+3. 生成された `SPRIME-PM1-Battery-Tray.exe` が起動する
 4. タスクトレイに残量、`--`、`!` の状態表示が出る
 5. READMEに確認済み環境と未確認デバイスの範囲を明記している
 6. `dist/`、`.venv/`、ログ、ローカル設定がGitに含まれていない
