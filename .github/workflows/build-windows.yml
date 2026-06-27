@@ -1,0 +1,63 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: pwsh
+        run: .\scripts\setup.ps1
+
+      - name: Run unit tests
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "src"
+          .\.venv\Scripts\python.exe -m pytest tests/
+
+      - name: Build EXE
+        shell: pwsh
+        run: .\scripts\build.ps1
+
+      - name: Package EXE folder
+        shell: pwsh
+        run: |
+          $packageName = "SPRIME-PM1-Battery-Tray-${{ github.ref_name }}.zip"
+          if ("${{ github.ref_type }}" -ne "tag") {
+            $shortSha = "${{ github.sha }}".Substring(0, 7)
+            $packageName = "SPRIME-PM1-Battery-Tray-$shortSha.zip"
+          }
+          Compress-Archive -Path "dist\SPRIME-PM1-Battery-Tray\*" -DestinationPath $packageName -Force
+          "PACKAGE_NAME=$packageName" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPRIME-PM1-Battery-Tray
+          path: ${{ env.PACKAGE_NAME }}
+          if-no-files-found: error
+
+      - name: Attach ZIP to GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.PACKAGE_NAME }}
+          generate_release_notes: true
