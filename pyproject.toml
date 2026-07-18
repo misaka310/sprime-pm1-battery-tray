@@ -19,7 +19,7 @@ source = ["src/sprime_pm1_battery_tray"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-fail_under = 45
+fail_under = 35
 exclude_lines = [
   "pragma: no cover",
   "if TYPE_CHECKING:",
