@@ -42,13 +42,16 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m mypy src\sprime_pm1_battery_tray\hid_protocol.py
 
-      - name: Run unit tests with coverage
+      - name: Run unit tests
         shell: pwsh
         run: |
           $env:PYTHONPATH = "src"
           .\.venv\Scripts\python.exe -m coverage erase
-          .\.venv\Scripts\python.exe -m coverage run -m pytest tests\
-          .\.venv\Scripts\python.exe -m coverage report
+          .\.venv\Scripts\python.exe -m coverage run -m pytest tests
+
+      - name: Enforce coverage floor
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m coverage report
 
       - name: Build EXE
         shell: pwsh
