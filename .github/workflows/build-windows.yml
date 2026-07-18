@@ -2,6 +2,7 @@ name: Build Windows EXE
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches:
       - main
@@ -25,15 +26,32 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install application dependencies
         shell: pwsh
         run: .\scripts\setup.ps1
+
+      - name: Install quality dependencies
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+
+      - name: Lint
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m ruff check src tests
+
+      - name: Typecheck HID protocol
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m mypy src\sprime_pm1_battery_tray\hid_protocol.py
 
       - name: Run unit tests
         shell: pwsh
         run: |
           $env:PYTHONPATH = "src"
-          .\.venv\Scripts\python.exe -m pytest tests/
+          .\.venv\Scripts\python.exe -m coverage erase
+          .\.venv\Scripts\python.exe -m coverage run -m pytest tests
+
+      - name: Enforce coverage floor
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m coverage report
 
       - name: Build EXE
         shell: pwsh
