@@ -80,7 +80,7 @@ SPRIME-PM1-Battery-Tray.exe
 ### ソースから実行
 
 ```powershell
-.\scripts\run.ps1
+.\run.ps1
 ```
 
 ### ビルド (EXE生成)
