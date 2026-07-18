@@ -1,5 +1,10 @@
-import hid
+from __future__ import annotations
+
 import time
+from collections.abc import Sequence
+from typing import Any
+
+import hid
 
 # Vendor ID and Product ID for SPRIME PM1
 VID = 0x1915
@@ -11,96 +16,130 @@ QUERY_FLAG = 0x01
 REPORT_LENGTH = 32
 MIN_RESPONSE_LENGTH = 14
 
+
 class SprimeDeviceError(Exception):
     pass
 
 
-def scan_devices():
-    devices = hid.enumerate(VID, PID)
-    return devices
+def scan_devices() -> list[dict[str, Any]]:
+    return list(hid.enumerate(VID, PID))
 
 
-def _decode_path(device):
-    path = device.get('path', b'')
+def _decode_path(device: dict[str, Any]) -> str:
+    path = device.get("path", b"")
     if isinstance(path, bytes):
-        return path.decode('ascii', errors='ignore')
-    return path or ''
+        return path.decode("ascii", errors="ignore")
+    return str(path or "")
 
 
-def _query_feature_report(device_path):
-    h = hid.device()
+def _query_feature_report(device_path: Any) -> Sequence[int]:
+    handle = hid.device()
     try:
-        h.open_path(device_path)
-        h.set_nonblocking(0)
+        handle.open_path(device_path)
+        handle.set_nonblocking(0)
 
         buf = bytearray(REPORT_LENGTH)
         buf[0] = FEATURE_REPORT_ID
         buf[1] = QUERY_COMMAND
         buf[4] = QUERY_FLAG
 
-        h.send_feature_report(buf)
+        sent = handle.send_feature_report(buf)
+        if not isinstance(sent, int) or sent <= 0:
+            raise SprimeDeviceError("HID feature report command was not accepted")
         time.sleep(0.05)
-        return h.get_feature_report(FEATURE_REPORT_ID, REPORT_LENGTH)
+        response = handle.get_feature_report(FEATURE_REPORT_ID, REPORT_LENGTH)
+        if response is None:
+            raise SprimeDeviceError("HID feature report returned no response")
+        return response
     finally:
         try:
-            h.close()
+            handle.close()
         except Exception:
             pass
 
 
-def parse_battery_report(ret):
+def parse_battery_report(ret: Sequence[int] | None) -> dict[str, Any]:
     if not ret or len(ret) < MIN_RESPONSE_LENGTH:
         return {"status": "read_failed", "error": "Invalid response length"}
 
-    battery = ret[9]
-    charging = bool(ret[10])
-    full = bool(ret[11])
-    online = bool(ret[12])
+    try:
+        battery = int(ret[9])
+        charging_raw = int(ret[10])
+        full_raw = int(ret[11])
+        online_raw = int(ret[12])
+    except (IndexError, TypeError, ValueError) as exc:
+        return {"status": "invalid_report", "error": f"Invalid report values: {exc}"}
+
+    if not 0 <= battery <= 100:
+        return {"status": "invalid_report", "error": f"Battery value out of range: {battery}"}
+    invalid_flags = {
+        "charging": charging_raw,
+        "full": full_raw,
+        "online": online_raw,
+    }
+    invalid_flags = {name: value for name, value in invalid_flags.items() if value not in (0, 1)}
+    if invalid_flags:
+        detail = ", ".join(f"{name}={value}" for name, value in invalid_flags.items())
+        return {"status": "invalid_report", "error": f"Invalid boolean flag values: {detail}"}
+
+    charging = bool(charging_raw)
+    full = bool(full_raw)
+    online = bool(online_raw)
 
     if not online:
         return {"status": "disconnected", "battery": battery, "charging": charging, "full": full}
     return {"status": "connected", "battery": battery, "charging": charging, "full": full}
 
 
-def select_sprime_device(devices):
+def select_sprime_device(devices: Sequence[dict[str, Any]]) -> dict[str, Any] | None:
     # The device that responds to feature report 5 is usually the one with a specific MI or Col.
     # Prefer Col04, then verify other matching HID endpoints by probing the feature report.
-    for d in devices:
-        if "Col04" in _decode_path(d):
-            return d
+    for device in devices:
+        if "col04" in _decode_path(device).lower():
+            return device
 
-    for d in devices:
-        device_path = d.get('path')
+    for device in devices:
+        device_path = device.get("path")
         if not device_path:
             continue
         try:
             ret = _query_feature_report(device_path)
             if ret and len(ret) >= MIN_RESPONSE_LENGTH:
-                return d
+                return device
         except Exception:
             continue
     return None
 
 
-def read_battery(device_path):
+def read_battery(device_path: Any) -> dict[str, Any]:
     try:
         ret = _query_feature_report(device_path)
-    except Exception as e:
-        error_text = str(e)
+    except Exception as exc:
+        error_text = str(exc)
         lowered = error_text.lower()
-        status = "permission_or_access_error" if "open" in lowered or "access" in lowered or "permission" in lowered else "read_failed"
-        return {"status": status, "error": error_text}
+        status = (
+            "permission_or_access_error"
+            if "open" in lowered or "access" in lowered or "permission" in lowered
+            else "read_failed"
+        )
+        return {"status": status, "error": error_text or exc.__class__.__name__}
 
     return parse_battery_report(ret)
 
 
-def get_battery_info():
-    devices = scan_devices()
+def get_battery_info() -> dict[str, Any]:
+    try:
+        devices = scan_devices()
+    except Exception as exc:
+        return {"status": "enumeration_failed", "error": str(exc) or exc.__class__.__name__}
+
     if not devices:
         return {"status": "device_not_found"}
 
     dev = select_sprime_device(devices)
     if not dev:
         return {"status": "protocol_unknown", "error": "Could not find compatible SPRIME endpoint"}
-
-    return read_battery(dev['path'])
+    device_path = dev.get("path")
+    if not device_path:
+        return {"status": "protocol_unknown", "error": "Compatible SPRIME endpoint has no HID path"}
+    return read_battery(device_path)
