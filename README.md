@@ -1,5 +1,7 @@
 # SPRIME PM1 Battery Tray
 
+[![Build Windows EXE](https://github.com/misaka310/sprime-pm1-battery-tray/actions/workflows/build-windows.yml/badge.svg)](https://github.com/misaka310/sprime-pm1-battery-tray/actions/workflows/build-windows.yml)
+
 WindowsのタスクトレイにSPRIME PM1系ワイヤレスマウスのバッテリー残量を常駐表示する、プレミアムなダークUIツールです。
 
 ## 重要な設計思想
@@ -82,6 +84,17 @@ SPRIME-PM1-Battery-Tray.exe
 ```powershell
 .\run.ps1
 ```
+
+### 品質確認
+
+```powershell
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m ruff check src tests
+.\.venv\Scripts\python.exe -m mypy src\sprime_pm1_battery_tray\hid_protocol.py
+.\.venv\Scripts\python.exe -m pytest tests
+```
+
+CIでは全体の非退行coverageに加え、HID protocolへRuffのimport・modernization・bugbear規則と90%のfocused coverageを要求します。空パス、空応答、異常値、権限エラー、列挙失敗、複合HID endpoint競合をモックで検証します。
 
 ### ビルド (EXE生成)
 単一のWindows用EXEフォルダ（コンソールなし）を生成します。
