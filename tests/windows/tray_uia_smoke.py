@@ -101,12 +101,12 @@ def controller_processes() -> list[psutil.Process]:
 
 def launch_app() -> psutil.Process:
     subprocess.Popen([str(EXE)], cwd=PACKAGE_ROOT)
-    rows = wait_until(
-        "one packaged tray process",
-        lambda: (found := controller_processes()) if len(found) == 1 else None,
-        timeout=15,
-    )
-    return rows[0]
+
+    def find_single_process() -> psutil.Process | None:
+        found = controller_processes()
+        return found[0] if len(found) == 1 else None
+
+    return wait_until("one packaged tray process", find_single_process, timeout=15)
 
 
 def candidate_scopes() -> Iterable[object]:
@@ -151,7 +151,9 @@ def open_hidden_icons_if_needed() -> None:
 
 
 def find_tray_button():
-    predicate = lambda text: text.casefold().startswith(APP_NAME.casefold())
+    def predicate(text: str) -> bool:
+        return text.casefold().startswith(APP_NAME.casefold())
+
     button = find_button(candidate_scopes(), predicate)
     if button is not None:
         return button
