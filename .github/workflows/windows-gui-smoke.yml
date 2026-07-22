@@ -30,24 +30,12 @@ jobs:
         run: |
           $path = 'tests/windows/tray_uia_smoke.py'
           $content = [IO.File]::ReadAllText($path)
-          $old = @'
-          return wait_until(
-              "SPRIME PM1 tray icon",
-              lambda: find_button(candidate_scopes(), predicate),
-              timeout=8,
-          )
-          '@
-          $new = @'
-          return wait_until(
-              "SPRIME PM1 tray icon",
-              lambda: find_button(candidate_scopes(), predicate),
-              timeout=20,
-          )
-          '@
-          if (-not $content.Contains($old)) {
+          $pattern = '("SPRIME PM1 tray icon",\r?\n\s+lambda:[^\r\n]+,\r?\n\s+)timeout=8,'
+          $updated = [regex]::Replace($content, $pattern, '${1}timeout=20,', 1)
+          if ($updated -eq $content) {
             throw 'Expected tray wait block was not found.'
           }
-          [IO.File]::WriteAllText($path, $content.Replace($old, $new), [Text.UTF8Encoding]::new($false))
+          [IO.File]::WriteAllText($path, $updated, [Text.UTF8Encoding]::new($false))
           python -m py_compile $path
           if ($LASTEXITCODE -ne 0) {
             throw 'Hosted taskbar timeout adaptation produced invalid Python.'
