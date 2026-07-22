@@ -11,7 +11,7 @@ import argparse
 import customtkinter as ctk
 import tkinter as tk
 
-from .config import load_config, save_config
+from .config import get_log_dir, load_config, save_config
 from .hid_protocol import get_battery_info
 from .icon_renderer import create_battery_icon
 from .settings_window import SettingsWindow
@@ -198,7 +198,7 @@ class BatteryTrayApp:
         save_config(self.config)
 
     def open_logs_folder(self):
-        log_dir = os.path.abspath("logs")
+        log_dir = get_log_dir()
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         os.startfile(log_dir)
