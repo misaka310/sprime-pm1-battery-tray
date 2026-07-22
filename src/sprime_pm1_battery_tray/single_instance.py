@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import time
 
 _MUTEX_NAME = "Local\\SPRIME_PM1_Battery_Tray_SingleInstance"
 _ERROR_ALREADY_EXISTS = 183
@@ -23,14 +24,18 @@ def acquire_single_instance() -> bool:
     close_handle.argtypes = [ctypes.c_void_p]
     close_handle.restype = ctypes.c_bool
 
-    ctypes.set_last_error(0)
-    handle = create_mutex(None, False, _MUTEX_NAME)
-    if not handle:
-        raise ctypes.WinError(ctypes.get_last_error())
+    for attempt in range(2):
+        ctypes.set_last_error(0)
+        handle = create_mutex(None, False, _MUTEX_NAME)
+        if not handle:
+            raise ctypes.WinError(ctypes.get_last_error())
 
-    if ctypes.get_last_error() == _ERROR_ALREADY_EXISTS:
+        if ctypes.get_last_error() != _ERROR_ALREADY_EXISTS:
+            _mutex_handle = int(handle)
+            return True
+
         close_handle(ctypes.c_void_p(handle))
-        return False
+        if attempt == 0:
+            time.sleep(0.5)
 
-    _mutex_handle = int(handle)
-    return True
+    return False
