@@ -25,45 +25,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Adapt hosted taskbar discovery after relaunch
-        shell: powershell
-        run: |
-          $path = 'tests/windows/tray_uia_smoke.py'
-          $content = [IO.File]::ReadAllText($path)
-          $pattern = '(?ms)^def find_tray_button\(\):.*?^def find_popup'
-          $replacement = @'
-          def find_tray_button():
-              def predicate(text: str) -> bool:
-                  return text.casefold().startswith(APP_NAME.casefold())
-
-              def find_or_refresh_overflow():
-                  button = find_button(candidate_scopes(), predicate)
-                  if button is not None:
-                      return button
-                  open_hidden_icons_if_needed()
-                  time.sleep(0.4)
-                  return find_button(candidate_scopes(), predicate)
-
-              return wait_until(
-                  "SPRIME PM1 tray icon",
-                  find_or_refresh_overflow,
-                  timeout=20,
-                  interval=0.8,
-              )
-
-
-          def find_popup
-          '@
-          $updated = [regex]::Replace($content, $pattern, $replacement, 1)
-          if ($updated -eq $content) {
-            throw 'Expected tray discovery function was not found.'
-          }
-          [IO.File]::WriteAllText($path, $updated, [Text.UTF8Encoding]::new($false))
-          python -m py_compile $path
-          if ($LASTEXITCODE -ne 0) {
-            throw 'Hosted taskbar adaptation produced invalid Python.'
-          }
-
       - name: Run packaged tray GUI smoke
         shell: powershell
         run: .\scripts\run-gui-smoke.ps1
