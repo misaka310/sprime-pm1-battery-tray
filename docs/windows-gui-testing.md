@@ -7,32 +7,31 @@ The regular Windows workflow runs unit tests and builds the PyInstaller package.
 ## Scenarios
 
 - the packaged tray application starts;
-- Refresh now remains responsive;
+- Refresh remains responsive;
 - Show settings opens one responsive Settings window and it can be closed;
 - Open logs opens the intended folder;
 - all expected menu items exist and are enabled;
-- a duplicate launch does not create duplicate tray processes;
+- a duplicate launch keeps one tray instance;
 - Quit exits cleanly;
-- the application remains operable after a second launch.
+- the application remains operable after a second launch and exits cleanly again.
 
 The **Start on boot** item is checked for presence and enablement, but the smoke test does not toggle it.
 
-## Self-hosted runner
+## GitHub Actions
 
-Run this only on a dedicated Windows 11 VM or test machine. The runner must:
+The public repository runs `.github/workflows/windows-gui-smoke.yml` on GitHub-hosted `windows-latest` for pull requests and manual `workflow_dispatch` runs. No self-hosted runner, repository variable, or custom runner label is required.
 
-- run in a logged-in interactive desktop session, not as a Session 0 service;
-- have the labels `self-hosted`, `windows`, `x64`, and `gui-automation`;
-- permit interaction with the Windows taskbar and Explorer;
-- have no copy of the packaged application already running.
+The job checks out a fresh Windows runner, sets up Python, builds the PyInstaller package, and operates the real taskbar and notification-area UI. The hosted-runner contract refreshes the hidden-icon overflow during the relaunch scenario so the second tray icon is discovered by its accessible name.
 
-Pull-request runs stay skipped until the repository variable below is enabled:
+## Local execution
 
-```text
-GUI_SELF_HOSTED_ENABLED=true
+The same smoke contract can be run from an interactive Windows desktop:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-gui-smoke.ps1
 ```
 
-Use `workflow_dispatch` for the first explicit run after registering the runner.
+Do not run it while another packaged copy from the same checkout is already running. The test opens the tray menu, Settings window, logs folder, and hidden-icon overflow while it runs.
 
 ## Results
 
