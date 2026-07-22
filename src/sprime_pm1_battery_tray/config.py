@@ -1,10 +1,17 @@
 import json
 import os
+import sys
 
 
 def _get_application_data_root():
     base = os.environ.get("APPDATA") or os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
     return os.path.abspath(os.path.join(base, "SprimePM1BatteryTray"))
+
+
+def _get_application_root():
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 CONFIG_DIR = _get_application_data_root()
@@ -20,7 +27,7 @@ DEFAULT_CONFIG = {
 
 
 def get_log_dir():
-    return os.path.join(CONFIG_DIR, "logs")
+    return os.path.join(_get_application_root(), "logs")
 
 
 def load_config():
