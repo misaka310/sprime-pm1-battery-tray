@@ -3,20 +3,27 @@ import os
 import sys
 
 APP_NAME = "SPRIME PM1 Battery Tray"
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+
 
 def is_startup_enabled():
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_READ)
-        value, _ = winreg.QueryValueEx(key, APP_NAME)
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_READ)
+        winreg.QueryValueEx(key, APP_NAME)
         winreg.CloseKey(key)
         return True
-    except WindowsError:
+    except OSError:
         return False
 
+
 def set_startup(enable):
-    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE)
+    except FileNotFoundError:
+        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY)
+
     if enable:
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # Running as PyInstaller executable
             exe_path = sys.executable
             cmd = f'"{exe_path}"'
@@ -29,6 +36,6 @@ def set_startup(enable):
     else:
         try:
             winreg.DeleteValue(key, APP_NAME)
-        except WindowsError:
+        except OSError:
             pass
     winreg.CloseKey(key)
