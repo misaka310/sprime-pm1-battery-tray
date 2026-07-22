@@ -21,7 +21,7 @@ The **Start on boot** item is checked for presence and enablement, but the smoke
 
 The public repository runs `.github/workflows/windows-gui-smoke.yml` on GitHub-hosted `windows-latest` for pull requests and manual `workflow_dispatch` runs. No self-hosted runner, repository variable, or custom runner label is required.
 
-The job checks out a fresh Windows runner, sets up Python, builds the PyInstaller package, and operates the real taskbar and notification-area UI. The hosted-runner contract refreshes the hidden-icon overflow during the relaunch scenario so the second tray icon is discovered by its accessible name.
+The job checks out a fresh Windows runner, sets up Python, builds the PyInstaller package, and operates the real taskbar and notification-area UI. The hidden-icon overflow refresh used during relaunch is committed in `tests/windows/hosted_tray_uia_smoke.py`; the workflow does not rewrite test source at runtime.
 
 ## Local execution
 
