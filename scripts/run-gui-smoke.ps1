@@ -6,7 +6,7 @@ Set-StrictMode -Version Latest
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $python = Join-Path $root '.venv\Scripts\python.exe'
 $requirements = Join-Path $root 'tests\windows\requirements-gui-smoke.txt'
-$test = Join-Path $root 'tests\windows\tray_uia_smoke.py'
+$test = Join-Path $root 'tests\windows\hosted_tray_uia_smoke.py'
 $exe = Join-Path $root 'dist\SPRIME-PM1-Battery-Tray\SPRIME-PM1-Battery-Tray.exe'
 
 if (-not [Environment]::UserInteractive) {
