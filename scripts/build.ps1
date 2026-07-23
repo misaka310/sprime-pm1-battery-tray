@@ -1,14 +1,21 @@
 # scripts/build.ps1
 $ErrorActionPreference = "Stop"
+$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+Set-Location $repoRoot
 
 Write-Host "Building EXE with PyInstaller..." -ForegroundColor Cyan
 
-$python = ".\.venv\Scripts\python.exe"
-$pyinstaller = ".\.venv\Scripts\pyinstaller.exe"
+$python = [System.IO.Path]::GetFullPath((Join-Path $repoRoot ".venv\Scripts\python.exe"))
+if (-not (Test-Path $python)) {
+    throw "Virtual-environment Python was not found: $python"
+}
+
 $appName = "SPRIME-PM1-Battery-Tray"
-$distDir = "dist\$appName"
-$buildDir = "build\$appName"
-$specFile = "$appName.spec"
+$distDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "dist\$appName"))
+$buildDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "build\$appName"))
+$specFile = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "$appName.spec"))
+$srcDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "src"))
+$entryPoint = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "pyinstaller_entry.py"))
 
 function Stop-ExistingApp {
     $processes = Get-Process -Name $appName -ErrorAction SilentlyContinue
@@ -48,21 +55,21 @@ Remove-PathWithRetry -Path $distDir
 Remove-PathWithRetry -Path $buildDir
 Remove-PathWithRetry -Path $specFile
 
-# Get customtkinter path
-$ctk_path = & $python -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))"
-Write-Host "CustomTkinter path: $ctk_path"
-
-$env:PYTHONPATH = "src"
-
-& $pyinstaller --noconfirm --onedir --windowed `
-    --name $appName `
-    --paths "src" `
-    --add-data "src/sprime_pm1_battery_tray;sprime_pm1_battery_tray/" `
-    --add-data "$($ctk_path);customtkinter/" `
-    pyinstaller_entry.py
-
-if ($LASTEXITCODE -ne 0) {
-    throw "PyInstaller build failed with exit code $LASTEXITCODE."
+$env:PYTHONPATH = $srcDir
+$arguments = @(
+    "-m", "PyInstaller",
+    "--noconfirm",
+    "--onedir",
+    "--windowed",
+    "--name", $appName,
+    "--paths", $srcDir,
+    "--add-data", "$srcDir\sprime_pm1_battery_tray;sprime_pm1_battery_tray/",
+    "--collect-all", "customtkinter",
+    $entryPoint
+)
+$build = Start-Process -FilePath $python -ArgumentList $arguments -NoNewWindow -Wait -PassThru
+if ($build.ExitCode -ne 0) {
+    throw "PyInstaller build failed with exit code $($build.ExitCode)."
 }
 
 $exePath = Join-Path $distDir "$appName.exe"
