@@ -163,3 +163,6 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Local agent/tool residue
+.ai-bridge/
