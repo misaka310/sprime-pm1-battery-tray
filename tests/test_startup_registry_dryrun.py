@@ -1,47 +1,30 @@
-import pytest
-import winreg
-from sprime_pm1_battery_tray.startup import is_startup_enabled, set_startup
+from pathlib import Path
 
-def test_startup_dryrun(monkeypatch):
-    # Mock winreg to avoid actually writing to registry during test
-    store = {}
-    
-    class MockKey:
-        pass
-        
-    def mock_open_key(*args):
-        return MockKey()
-        
-    def mock_query_value_ex(key, name):
-        if name in store:
-            return store[name], 1
-        raise WindowsError("File not found")
-        
-    def mock_set_value_ex(key, name, reserved, type, value):
-        store[name] = value
-        
-    def mock_delete_value(key, name):
-        if name in store:
-            del store[name]
-        else:
-            raise WindowsError("File not found")
-            
-    def mock_close_key(key):
-        pass
+from sprime_pm1_battery_tray import startup
 
-    monkeypatch.setattr(winreg, "OpenKey", mock_open_key)
-    monkeypatch.setattr(winreg, "QueryValueEx", mock_query_value_ex)
-    monkeypatch.setattr(winreg, "SetValueEx", mock_set_value_ex)
-    monkeypatch.setattr(winreg, "DeleteValue", mock_delete_value)
-    monkeypatch.setattr(winreg, "CloseKey", mock_close_key)
 
-    # Initial state should be false
-    assert not is_startup_enabled()
+def test_startup_shortcut_toggle(monkeypatch, tmp_path):
+    monkeypatch.setenv("APPDATA", str(tmp_path))
 
-    # Set to true
-    set_startup(True)
-    assert is_startup_enabled()
+    legacy_cleanup_calls = []
 
-    # Set to false
-    set_startup(False)
-    assert not is_startup_enabled()
+    def fake_create_shortcut(shortcut_path, target_path, arguments=""):
+        path = Path(shortcut_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+
+    monkeypatch.setattr(startup, "_create_shortcut", fake_create_shortcut)
+    monkeypatch.setattr(startup, "_remove_legacy_run_entry", lambda: legacy_cleanup_calls.append(True))
+
+    assert not startup.is_startup_enabled()
+
+    startup.set_startup(True)
+    assert startup.is_startup_enabled()
+
+    startup.set_startup(False)
+    assert not startup.is_startup_enabled()
+    assert len(legacy_cleanup_calls) == 2
+
+
+def test_powershell_quote_escapes_single_quotes():
+    assert startup._powershell_quote("C:\\Users\\O'Brien") == "'C:\\Users\\O''Brien'"
