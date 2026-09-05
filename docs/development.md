@@ -37,6 +37,14 @@ dist/SPRIME-PM1-Battery-Tray/SPRIME-PM1-Battery-Tray.exe
 
 `.github/workflows/build-windows.yml`は`main`へのpush、手動実行、`v*`タグpushでWindows EXEをビルドします。通常のpushと手動実行ではActions artifact、タグpushではGitHub ReleaseへZIPを添付します。
 
+## ユーザー環境へのインストール（任意）
+
+ビルド済みEXE（`dist/SPRIME-PM1-Battery-Tray/`）を`%LOCALAPPDATA%\Programs`配下へ配置し、スタートメニュー登録・スタートアップ起動設定まで行う場合は以下を使います。
+
+```powershell
+.\scripts\install_user.ps1 [-EnableStartup]
+```
+
 ## 実機E2E
 
 ```powershell
